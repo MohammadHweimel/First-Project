@@ -1,2 +1,48 @@
-/* Your custom styles go here.
-   Use Bootstrap classes first, and write your own CSS only when you need to. */
+body {
+  background-color: #010d1137; 
+  transition: background-color 0.3s ease;
+}
+
+body.dark-mode,
+[data-bs-theme="dark"] body {
+  background-color: #121212 !important; 
+  color: #f8f9fa !important;
+}
+
+.navbar {
+  background-color: #08293e; 
+  transition: background-color 0.3s ease;
+}
+#button {
+  background-color: #4e94c0;
+  color: #ffffff;
+  border-color: #193f6a;
+}
+#button:hover {
+  background-color: #31617e !important;
+  color: #ffffff !important;
+  border-color: #193f6a !important  ;
+}
+
+#button:active,
+#button-primary:active {
+  background-color: #24485e !important;
+  border-color: #295068 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+#search {
+  border-color: #4e94c0b8 !important;
+  border-radius: 10px !important;
+  max-width: 420px;
+}
+
+#filtermonth {
+  max-width: 160px;
+}
+
+#filtercategory {
+  width: auto;
+  min-width: 110px;
+}

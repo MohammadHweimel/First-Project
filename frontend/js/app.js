@@ -20,6 +20,8 @@ const editExpenseForm = document.getElementById('editexpenseform');
 const editModalEl = document.getElementById('editmodal');
 const editModal = new bootstrap.Modal(editModalEl);
 
+
+
 function setLoadingSpinner(show) {
     if (show) {
         loadingSpinner.classList.remove('d-none');
@@ -55,6 +57,7 @@ function getBadgeClass(category) {
     }
 }
 
+
 function updateSummary(expenses) {
     const count = expenses.length;
     totalCountEl.textContent = count;
@@ -67,7 +70,7 @@ function updateSummary(expenses) {
     }
 
     const total = expenses.reduce((sum, item) => sum + parseFloat(item.amount), 0);
-    totalAmountEl.textContent = total.toFixed(2);
+    totalAmountEl.textContent = formatCurrency(total);
 
     let highest = expenses[0];
 
@@ -77,7 +80,7 @@ function updateSummary(expenses) {
         }
     }
 
-    highestAmountEl.textContent = parseFloat(highest.amount).toFixed(2);
+    highestAmountEl.textContent = formatCurrency(highest.amount);
     highestTitleEl.textContent = highest.title || '-';
 }
 
@@ -103,7 +106,7 @@ function drawTable(expenses) {
         tr.appendChild(tdTitle);
 
         const tdAmount = document.createElement('td');
-        tdAmount.textContent = parseFloat(item.amount).toFixed(2);
+        tdAmount.textContent = formatCurrency(item.amount);
         tr.appendChild(tdAmount);
 
         const tdCategory = document.createElement('td');
@@ -148,6 +151,7 @@ async function fetchExpenses() {
         }
         allExpenses = await res.json();
 
+renderCategoryChart(allExpenses);
         updateSummary(allExpenses);
         applyFilter();
     } catch (error) {
@@ -318,37 +322,110 @@ const id = document.getElementById('editexpenseid').value;
     }
 });
 
-async function deleteExpense(id) {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-    setLoadingSpinner(true);
-    try {
-        const res = await fetch(`${API_URL}/${id}`, {
-            method: 'DELETE'
-        });
+let expenseIdToDelete = null;
 
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-            throw new Error(data.error || data.message || 'Failed to delete expense');
-        }
+const deleteModalEl = document.getElementById('deletemodal');
+const deleteModal = new bootstrap.Modal(deleteModalEl);
+const confirmDeleteBtn = document.getElementById('confirmdeletebtn');
 
-        showAlert('Expense deleted successfully!', 'success');
-        await fetchExpenses();
-    } catch (error) {
-        showAlert(error.message, 'danger');
-    } finally {
-        setLoadingSpinner(false);
-    }
+
+function deleteExpense(id) {
+    expenseIdToDelete = id;
+    deleteModal.show();
 }
+
+
+if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener('click', async () => {
+        if (!expenseIdToDelete) return;
+
+        deleteModal.hide();
+        setLoadingSpinner(true);
+
+        try {
+            const res = await fetch(`${API_URL}/${expenseIdToDelete}`, {
+                method: 'DELETE'
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || data.message || 'Failed to delete expense');
+            }
+
+            showAlert('Expense deleted successfully!', 'success');
+            await fetchExpenses();
+        } catch (error) {
+            showAlert(error.message, 'danger');
+        } finally {
+            setLoadingSpinner(false);
+            expenseIdToDelete = null;
+        }
+    });
+}
+
+const searchInput = document.getElementById('search');
+const filterMonth = document.getElementById('filtermonth');
+const resetFiltersBtn = document.getElementById('resetfiltersbtn');
+
 
 function applyFilter() {
+  const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+  const selectedMonth = filterMonth ? filterMonth.value : ''; 
   const selectedCategory = filterCategory.value;
-  if (selectedCategory === 'All') {
-    drawTable(allExpenses);
-  } else {
-    const filtered = allExpenses.filter(item => item.category === selectedCategory);
-    drawTable(filtered);
-  }
+
+  const filtered = allExpenses.filter(item => {
+    const matchesSearch = !searchTerm || item.title.toLowerCase().includes(searchTerm);
+
+    const itemMonth = item.date ? item.date.split('T')[0].substring(0, 7) : '';
+    const matchesMonth = !selectedMonth || itemMonth === selectedMonth;
+
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+
+    return matchesSearch && matchesMonth && matchesCategory;
+  });
+
+  drawTable(filtered);
 }
+
+if (searchInput) searchInput.addEventListener('input', applyFilter);
+if (filterMonth) filterMonth.addEventListener('change', applyFilter);
+filterCategory.addEventListener('change', applyFilter);
+
+if (resetFiltersBtn) {
+  resetFiltersBtn.addEventListener('click', () => {
+    if (searchInput) searchInput.value = '';
+    if (filterMonth) filterMonth.value = '';
+    filterCategory.value = 'All';
+    applyFilter();
+  });
+}
+
+function formatCurrency(amount, currency = 'JOD') {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2
+  }).format(amount);
+}
+
+const formInputs = [
+  document.getElementById('expensetitle'),
+  document.getElementById('expenseamount'),
+  document.getElementById('category'),
+  document.getElementById('expensedate'),
+  
+  document.getElementById('edittitle'),
+  document.getElementById('editamount'),
+  document.getElementById('editcategory'),
+  document.getElementById('editdate')
+];
+
+formInputs.forEach(input => {
+  if (input) {
+    input.addEventListener('input', () => input.classList.remove('is-invalid'));
+    input.addEventListener('change', () => input.classList.remove('is-invalid'));
+  }
+});
 
 filterCategory.addEventListener('change', applyFilter);
 
@@ -362,6 +439,65 @@ themeBtn.addEventListener('click', () => {
     
     document.getElementById('themeicon').textContent = newTheme === 'dark' ? '☀️' : '🌙';
     document.getElementById('themetext').textContent = newTheme === 'dark' ? 'Light Mode' : 'Dark Mode';
+
+    renderCategoryChart(allExpenses);
 });
+
+let myChart = null; 
+
+function renderCategoryChart(expenses) {
+  const ctx = document.getElementById('categorychart');
+
+  const isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  const textColor = isDarkMode ? '#ffffff' : '#333333';
+  const borderColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+
+  const categoryTotals = {};
+  expenses.forEach(item => {
+    const cat = item.category || 'Other';
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(item.amount);
+  });
+
+  const labels = Object.keys(categoryTotals);
+  const data = Object.values(categoryTotals);
+
+  if (myChart) {
+    myChart.destroy();
+  }
+
+  myChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: [
+          '#4e94c0',
+          '#386D8F',
+          '#10B981',
+          '#F59E0B',
+          '#EF4444',
+          '#8B5CF6'
+        ],
+        borderWidth: 2,
+        borderColor: borderColor,
+        hoverBorderColor: borderColor
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: textColor,
+            font: { size: 12 }
+          }
+        }
+      }
+    }
+  });
+}
 
 document.addEventListener('DOMContentLoaded', fetchExpenses);

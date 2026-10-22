@@ -35,11 +35,20 @@ Follow these steps to set up the database, start the server, and launch the appl
 ### Desktop View
 ![Desktop View](screenshots/desktop.png)
 
+### Desktop View Dark Mode
+![Desktop Dark Mode View](screenshots/desktopdarckmode.png)
+
 ### Mobile View
 ![Mobile View](screenshots/mobile.png)
 
-### Dark Mode View
-![Dark Mode View](screenshots/dark-mode.png)
+### Expenses View
+![Expenses View](screenshots/expenses.png)
+
+### Edite Expenses View
+![Edite Expenses View](screenshots/editeexpense.png)
+
+### Delete Expenses View
+![Delete Expenses View](screenshots/deleteexpense.png)
 
 ## What was the hardest part?
 
